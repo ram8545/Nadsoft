@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: nadsoft-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: student_db
+      MYSQL_USER: nadsoft_user
+      MYSQL_PASSWORD: nadsoft_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # Optional: for initial data
+    networks:
+      - nadsoft-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Backend API
+  backend:
+    image: nadsoft-backend
+    container_name: nadsoft-backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: nadsoft_user
+      DB_PASSWORD: nadsoft_password
+      DB_NAME: student_db
+      NODE_ENV: production
+    ports:
+      - "3001:3001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - nadsoft-network
+
+  # Frontend
+  frontend:
+    image: nadsoft-frontend
+    container_name: nadsoft-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - nadsoft-network
+
+# Named volumes
+volumes:
+  mysql_data:
+    driver: local
+
+# Custom network
+networks:
+  nadsoft-network:
+    driver: bridge

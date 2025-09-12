@@ -5,7 +5,13 @@ exports.createStudent = (req, res) => {
   const sql = `INSERT INTO students (first_name, last_name, email, dob, gender) VALUES (?, ?, ?, ?, ?)`;
 
   db.run(sql, [first_name, last_name, email, dob, gender], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      // Handle duplicate email error
+      if (err.code === 'ER_DUP_ENTRY') {
+        return res.status(400).json({ error: 'Email already exists' });
+      }
+      return res.status(500).json({ error: err.message });
+    }
     res.status(201).json({ id: this.lastID, ...req.body });
   });
 };
@@ -15,14 +21,14 @@ exports.getAllStudents = (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
 
-  const countQuery = "SELECT COUNT(*) AS total FROM Students";
-  const dataQuery = `SELECT * FROM Students LIMIT ? OFFSET ?`;
+  const countQuery = "SELECT COUNT(*) AS total FROM students";
+  const dataQuery = `SELECT * FROM students ORDER BY id LIMIT ${limit} OFFSET ${offset}`;
 
   db.get(countQuery, [], (err, countResult) => {
-    if (err) return res.status(500).json({ error: err });
+    if (err) return res.status(500).json({ error: err.message });
 
-    db.all(dataQuery, [limit, offset], (err, rows) => {
-      if (err) return res.status(500).json({ error: err });
+    db.all(dataQuery, [], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
 
       res.json({
         metadata: {
@@ -66,15 +72,34 @@ exports.updateStudent = (req, res) => {
   const sql = `UPDATE students SET first_name=?, last_name=?, email=?, dob=?, gender=? WHERE id=?`;
 
   db.run(sql, [first_name, last_name, email, dob, gender, id], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      // Handle duplicate email error
+      if (err.code === 'ER_DUP_ENTRY') {
+        return res.status(400).json({ error: 'Email already exists' });
+      }
+      return res.status(500).json({ error: err.message });
+    }
+
+    // Check if any rows were actually updated
+    if (this.changes === 0) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+
     res.json({ updated: this.changes });
   });
 };
 
 exports.deleteStudent = (req, res) => {
   const id = req.params.id;
+
   db.run(`DELETE FROM students WHERE id=?`, [id], function (err) {
     if (err) return res.status(500).json({ error: err.message });
+
+    // Check if any rows were actually deleted
+    if (this.changes === 0) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+
     res.json({ deleted: this.changes });
   });
 };
