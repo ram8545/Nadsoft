@@ -2,12 +2,44 @@
 
 A full-stack web application for managing student records with CRUD operations, built with React frontend, Node.js backend, and MySQL database.
 
-## 🏗️ Architecture
+## 🏗️ System Architecture
 
-- **Frontend**: React.js application served on port 3000
-- **Backend**: Node.js/Express API server on port 3001
-- **Database**: MySQL 8.0 on port 3306
-- **Containerization**: Docker & Docker Compose
+![Architecture Diagram](./docs/images/architecture-diagram.png)
+
+### Service Overview
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   React Frontend│    │ Node.js Backend │    │  MySQL Database │
+│    (Port 3000)  │◄──►│   (Port 3001)   │◄──►│   (Port 3306)   │
+│                 │    │                 │    │                 │
+│ • User Interface│    │ • REST API      │    │ • Data Storage  │
+│ • State Mgmt    │    │ • Business Logic│    │ • Relationships │
+│ • HTTP Requests │    │ • Data Validation│   │ • Transactions  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### Docker Network Architecture
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    Docker Network                            │
+│                  (nadsoft-network)                          │
+│                                                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │  Frontend   │  │  Backend    │  │      MySQL          │  │
+│  │ Container   │  │ Container   │  │    Container        │  │
+│  │             │  │             │  │                     │  │
+│  │ nginx:alpine│  │ node:18     │  │   mysql:8.0         │  │
+│  │             │  │             │  │                     │  │
+│  └─────┬───────┘  └─────┬───────┘  └─────────┬───────────┘  │
+│        │                │                    │             │
+└────────┼────────────────┼────────────────────┼─────────────┘
+         │                │                    │
+         │                │                    │
+    ┌────▼────┐      ┌────▼────┐         ┌────▼────┐
+    │Port 3000│      │Port 3001│         │Port 3306│
+    │  (HTTP) │      │  (API)  │         │  (SQL)  │
+    └─────────┘      └─────────┘         └─────────┘
+```
 
 ## 📋 Prerequisites
 
@@ -47,26 +79,62 @@ docker-compose logs -f
 - **Backend API**: http://localhost:3001
 - **Database**: localhost:3306
 
+### 5. Verify Services are Running
+```bash
+# Check service status
+docker-compose ps
+
+# Expected output:
+# NAME               IMAGE               STATUS
+# nadsoft-frontend   nadsoft-frontend    Up
+# nadsoft-backend    nadsoft-backend     Up
+# nadsoft-mysql      mysql:8.0           Up (healthy)
+```
+
 ## 📁 Project Structure
 
 ```
 nadsoft-student-management/
 ├── frontend/                 # React frontend application
 │   ├── src/
+│   │   ├── components/       # React components
+│   │   ├── pages/           # Page components
+│   │   ├── services/        # API service functions
+│   │   └── App.js           # Main App component
 │   ├── public/
 │   ├── package.json
 │   └── Dockerfile
 ├── backend/                  # Node.js backend API
-│   ├── controllers/
-│   ├── routes/
-│   ├── db.js
+│   ├── controllers/         # Route controllers
+│   ├── routes/              # API routes
+│   ├── middleware/          # Custom middleware
+│   ├── db.js               # Database connection
+│   ├── server.js           # Express server setup
 │   ├── package.json
 │   └── Dockerfile
-├── docker-compose.yml        # Docker Compose configuration
-├── .env                      # Environment variables
-├── init.sql                  # Database initialization script
+├── docs/                    # Documentation
+│   └── images/             # Architecture diagrams
+│       └── architecture-diagram.png
+├── docker-compose.yml       # Docker Compose configuration
+├── .env                     # Environment variables
+├── init.sql                 # Database initialization script
 └── README.md
 ```
+
+## 🐳 Docker Services Configuration
+
+### Service Details
+
+| Service | Image | Port | Volume | Health Check |
+|---------|-------|------|---------|-------------|
+| **Frontend** | `nadsoft-frontend` | 3000:80 | - | HTTP GET / |
+| **Backend** | `nadsoft-backend` | 3001:3001 | - | HTTP GET /health |
+| **MySQL** | `mysql:8.0` | 3306:3306 | `mysql_data:/var/lib/mysql` | mysqladmin ping |
+
+### Network Configuration
+- **Network Name**: `nadsoft-network`
+- **Driver**: bridge
+- **Internal Communication**: Service discovery by container names
 
 ## ⚙️ Configuration
 
@@ -93,11 +161,20 @@ NODE_ENV=production
 FRONTEND_PORT=3000
 BACKEND_PORT=3001
 MYSQL_PORT=3306
+
+# CORS Configuration
+CORS_ORIGIN=http://localhost:3000
 ```
 
 ### Database Schema
 
-The application creates the following tables:
+The application creates the following tables with relationships:
+
+```sql
+-- Database: student_db
+-- Character Set: utf8mb4
+-- Collation: utf8mb4_unicode_ci
+```
 
 #### Students Table
 ```sql
@@ -135,6 +212,14 @@ CREATE TABLE marks (
 );
 ```
 
+### Database Relationships
+```
+Students (1) ──────── (*) Marks (*) ──────── (1) Subjects
+    │                        │                      │
+    └── id                   ├── student_id         └── subject_id
+                             └── subject_id
+```
+
 ## 🔧 Docker Commands
 
 ### Basic Operations
@@ -168,6 +253,10 @@ docker-compose up
 
 # Scale a service (if needed)
 docker-compose up -d --scale backend=2
+
+# Execute command in running container
+docker-compose exec backend npm run test
+docker-compose exec mysql mysql -u nadsoft_user -p
 ```
 
 ### Data Management
@@ -176,26 +265,45 @@ docker-compose up -d --scale backend=2
 docker-compose down -v
 
 # Backup database
-docker exec nadsoft-mysql mysqldump -u nadsoft_user -p nadsoft_password student_db > backup.sql
+docker exec nadsoft-mysql mysqldump -u nadsoft_user -pnadsoft_password student_db > backup.sql
 
 # Restore database
-docker exec -i nadsoft-mysql mysql -u nadsoft_user -p nadsoft_password student_db < backup.sql
+docker exec -i nadsoft-mysql mysql -u nadsoft_user -pnadsoft_password student_db < backup.sql
+
+# View database size
+docker exec nadsoft-mysql mysql -u nadsoft_user -pnadsoft_password -e "SELECT table_schema AS 'Database', ROUND(SUM(data_length + index_length) / 1024 / 1024, 1) AS 'DB Size in MB' FROM information_schema.tables WHERE table_schema='student_db';"
 ```
 
 ## 🌐 API Endpoints
 
-### Students
+### Health Check
+- `GET /health` - Service health status
+
+### Students API
 - `GET /api/students` - Get all students (with pagination)
 - `GET /api/students/:id` - Get student by ID (with marks)
 - `POST /api/students` - Create new student
 - `PUT /api/students/:id` - Update student
 - `DELETE /api/students/:id` - Delete student
 
+### Subjects API
+- `GET /api/subjects` - Get all subjects
+- `POST /api/subjects` - Create new subject
+
+### Marks API
+- `GET /api/marks/student/:id` - Get marks for a student
+- `POST /api/marks` - Add marks for a student
+
 ### Query Parameters for GET /api/students
 - `page` - Page number (default: 1)
 - `limit` - Items per page (default: 10)
+- `search` - Search by name or email
+- `sortBy` - Sort field (first_name, last_name, email, created_at)
+- `sortOrder` - Sort direction (asc, desc)
 
-### Request Body Example (POST/PUT)
+### Request Body Examples
+
+#### Create/Update Student (POST/PUT)
 ```json
 {
   "first_name": "John",
@@ -203,6 +311,50 @@ docker exec -i nadsoft-mysql mysql -u nadsoft_user -p nadsoft_password student_d
   "email": "john.doe@example.com",
   "dob": "2000-01-15",
   "gender": "Male"
+}
+```
+
+#### Create Subject (POST)
+```json
+{
+  "subject_name": "Mathematics"
+}
+```
+
+#### Add Marks (POST)
+```json
+{
+  "student_id": 1,
+  "subject_id": 1,
+  "marks_obtained": 85
+}
+```
+
+### API Response Examples
+
+#### Success Response
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@example.com",
+    "dob": "2000-01-15",
+    "gender": "Male",
+    "created_at": "2025-01-01T10:00:00.000Z"
+  },
+  "message": "Student created successfully"
+}
+```
+
+#### Error Response
+```json
+{
+  "success": false,
+  "error": "Email already exists",
+  "message": "A student with this email already exists"
 }
 ```
 
@@ -218,6 +370,7 @@ docker exec -i nadsoft-mysql mysql -u nadsoft_user -p nadsoft_password student_d
    lsof -i :3306
 
    # Kill the process or change ports in docker-compose.yml
+   sudo kill -9 $(lsof -t -i:3000)
    ```
 
 2. **Database connection failed**
@@ -227,6 +380,9 @@ docker exec -i nadsoft-mysql mysql -u nadsoft_user -p nadsoft_password student_d
 
    # Restart MySQL service
    docker-compose restart mysql
+
+   # Check if MySQL is accepting connections
+   docker-compose exec mysql mysqladmin -u nadsoft_user -pnadsoft_password ping
    ```
 
 3. **Backend can't connect to database**
@@ -234,16 +390,29 @@ docker exec -i nadsoft-mysql mysql -u nadsoft_user -p nadsoft_password student_d
    # Check if services are on the same network
    docker network ls
    docker network inspect nadsoft-student-management_nadsoft-network
+
+   # Test connection from backend container
+   docker-compose exec backend ping mysql
    ```
 
 4. **Frontend can't reach backend**
    - Ensure backend URL in frontend code points to `http://localhost:3001`
    - Check if backend service is running: `docker-compose ps`
+   - Verify CORS configuration in backend
+
+5. **Docker build issues**
+   ```bash
+   # Clean Docker cache
+   docker system prune -a
+
+   # Rebuild without cache
+   docker-compose build --no-cache
+   ```
 
 ### Debugging Commands
 ```bash
 # Enter MySQL container
-docker exec -it nadsoft-mysql mysql -u nadsoft_user -p
+docker exec -it nadsoft-mysql mysql -u nadsoft_user -pnadsoft_password
 
 # Enter backend container
 docker exec -it nadsoft-backend sh
@@ -253,17 +422,46 @@ docker exec -it nadsoft-frontend sh
 
 # Check container resource usage
 docker stats
+
+# Inspect container configuration
+docker inspect nadsoft-backend
+
+# View container filesystem
+docker exec nadsoft-backend ls -la /app
+```
+
+### Service Health Monitoring
+```bash
+# Check all services health
+docker-compose ps
+
+# Test backend API health
+curl http://localhost:3001/health
+
+# Test frontend accessibility
+curl -I http://localhost:3000
+
+# Test database connectivity
+docker-compose exec backend node -e "const mysql = require('mysql2'); const db = mysql.createConnection({host: 'mysql', user: 'nadsoft_user', password: 'nadsoft_password', database: 'student_db'}); db.connect((err) => { if(err) console.log('Failed:', err.message); else console.log('Connected!'); db.end(); });"
 ```
 
 ## 🧪 Testing
 
 ### Manual Testing
 1. Access frontend at http://localhost:3000
-2. Test CRUD operations through the UI
-3. Verify API endpoints using tools like Postman or curl
+2. Test CRUD operations through the UI:
+   - Create new students
+   - View student list with pagination
+   - Edit student information
+   - Delete students
+   - Add and view marks
 
 ### API Testing with curl
+
 ```bash
+# Health check
+curl http://localhost:3001/health
+
 # Get all students
 curl http://localhost:3001/api/students
 
@@ -274,67 +472,221 @@ curl -X POST http://localhost:3001/api/students \
 
 # Get student by ID
 curl http://localhost:3001/api/students/1
+
+# Update student
+curl -X PUT http://localhost:3001/api/students/1 \
+  -H "Content-Type: application/json" \
+  -d '{"first_name":"Jane","last_name":"Doe","email":"jane.doe@example.com","dob":"1999-05-20","gender":"Female"}'
+
+# Delete student
+curl -X DELETE http://localhost:3001/api/students/1
+
+# Search students
+curl "http://localhost:3001/api/students?search=jane&page=1&limit=5"
 ```
 
-## 📊 Monitoring
+### API Testing with Postman
+Import the following collection URL:
+```
+postman_collection.json (create and place in docs folder)
+```
+
+## 📊 Monitoring & Performance
 
 ### Health Checks
-The MySQL service includes health checks. You can monitor service health:
-```bash
-# Check service health
-docker-compose ps
+All services include health checks:
 
-# View health check logs
-docker inspect nadsoft-mysql | grep -A 10 Health
+```yaml
+# MySQL Health Check
+healthcheck:
+  test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "nadsoft_user", "-pnadsoft_password"]
+  timeout: 20s
+  retries: 10
+
+# Backend Health Check
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
 ```
 
-### Logs
+### Performance Monitoring
 ```bash
-# View all logs
-docker-compose logs
+# Monitor resource usage
+docker stats --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.BlockIO}}"
 
-# Follow logs in real-time
-docker-compose logs -f --tail=50
+# Database performance
+docker exec nadsoft-mysql mysql -u nadsoft_user -pnadsoft_password -e "SHOW PROCESSLIST;"
+
+# Check slow queries
+docker exec nadsoft-mysql mysql -u nadsoft_user -pnadsoft_password -e "SELECT * FROM information_schema.processlist WHERE time > 1;"
+```
+
+### Logs Management
+```bash
+# View all logs with timestamps
+docker-compose logs -t
+
+# Follow logs in real-time with limited lines
+docker-compose logs -f --tail=100
 
 # Logs for specific service
-docker-compose logs -f backend
+docker-compose logs -f backend --tail=50
+
+# Save logs to file
+docker-compose logs > application.log
+
+# Rotate logs (if getting too large)
+docker-compose down && docker-compose up -d
 ```
 
 ## 🔄 Updates and Maintenance
 
 ### Updating the Application
-1. Pull latest changes from repository
-2. Rebuild images:
+1. **Pull latest changes**
+   ```bash
+   git pull origin main
+   ```
+
+2. **Rebuild and restart services**
    ```bash
    docker-compose down
    docker-compose build --no-cache
    docker-compose up -d
    ```
 
+3. **Verify updates**
+   ```bash
+   docker-compose ps
+   curl http://localhost:3001/health
+   ```
+
 ### Database Migrations
-For schema changes, update the `init.sql` file and:
-1. Backup existing data
-2. Update the database schema
-3. Restart the services
+For schema changes:
 
-### Cleaning Up
+1. **Backup current data**
+   ```bash
+   docker exec nadsoft-mysql mysqldump -u nadsoft_user -pnadsoft_password student_db > backup_$(date +%Y%m%d_%H%M%S).sql
+   ```
+
+2. **Update init.sql with new schema**
+
+3. **Apply migrations** (for production, use proper migration scripts)
+   ```bash
+   docker-compose down -v  # WARNING: This removes all data
+   docker-compose up -d
+   ```
+
+### Regular Maintenance Tasks
+
+**Weekly:**
 ```bash
-# Remove unused images and containers
-docker system prune -a
+# Check disk usage
+docker system df
 
-# Remove only this project's resources
-docker-compose down -v --rmi all
+# Clean unused images
+docker image prune -f
+
+# Backup database
+./scripts/backup_database.sh  # Create this script
+```
+
+**Monthly:**
+```bash
+# Full system cleanup
+docker system prune -a --volumes
+
+# Update base images
+docker-compose pull
+docker-compose up -d
+```
+
+### Scaling Considerations
+
+For production deployment:
+- Use external MySQL service (AWS RDS, Google Cloud SQL)
+- Implement load balancer for multiple backend instances
+- Use Redis for session management
+- Set up proper logging (ELK stack)
+- Implement monitoring (Prometheus + Grafana)
+
+## 🚀 Deployment
+
+### Production Deployment Checklist
+
+- [ ] Update environment variables for production
+- [ ] Configure reverse proxy (nginx)
+- [ ] Set up SSL certificates
+- [ ] Configure backup strategy
+- [ ] Set up monitoring and alerting
+- [ ] Configure log rotation
+- [ ] Test disaster recovery procedures
+
+### Docker Production Compose
+Create `docker-compose.prod.yml`:
+```yaml
+version: '3.8'
+services:
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - /var/lib/mysql:/var/lib/mysql
 ```
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Development Setup
+```bash
+# Clone your fork
+git clone https://github.com/yourusername/nadsoft-student-management.git
+
+# Create development branch
+git checkout -b development
+
+# Start development environment
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+## 📄 Documentation
+
+- [API Documentation](./docs/API.md)
+- [Frontend Components](./docs/FRONTEND.md)
+- [Database Schema](./docs/DATABASE.md)
+- [Deployment Guide](./docs/DEPLOYMENT.md)
 
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+---
+
+## 📞 Support
+
+For support and questions:
+- Create an issue in the repository
+- Email: support@nadsoft.com
+- Documentation: [Wiki](https://github.com/yourusername/nadsoft-student-management/wiki)
+
+---
+
+**Made with ❤️ by ram8545**
