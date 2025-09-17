@@ -4,7 +4,7 @@ A full-stack web application for managing student records with CRUD operations, 
 
 ## 🏗️ System Architecture
 
-![Architecture Diagram](./docs/images/architecture-diagram.png)
+![Architecture Diagram](./student_management_architecture.svg)
 
 ### Service Overview
 ```
@@ -679,13 +679,6 @@ docker-compose -f docker-compose.dev.yml up -d
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
-
-## 📞 Support
-
-For support and questions:
-- Create an issue in the repository
-- Email: support@nadsoft.com
-- Documentation: [Wiki](https://github.com/yourusername/nadsoft-student-management/wiki)
 
 ---
 
