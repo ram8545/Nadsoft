@@ -1,130 +1,116 @@
 #!/bin/bash
 
-# Nadsoft Kubernetes Deployment Script
+# Simple deployment script using Docker Hub images
 
 set -e
 
-echo "🚀 Starting Nadsoft Student Management System deployment..."
-
-# Colors for output
-RED='\033[0;31m'
+# Colors
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
 
-# Function to print colored output
-print_status() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
+print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
+print_info "🚀 Deploying Nadsoft using Docker Hub images..."
 
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Check if kubectl is installed
+# Check kubectl
 if ! command -v kubectl &> /dev/null; then
-    print_error "kubectl is not installed. Please install kubectl first."
+    print_error "kubectl not found. Please install kubectl first."
     exit 1
 fi
 
-# Check if we can connect to Kubernetes cluster
 if ! kubectl cluster-info &> /dev/null; then
-    print_error "Cannot connect to Kubernetes cluster. Please check your kubeconfig."
+    print_error "Cannot connect to Kubernetes cluster."
     exit 1
 fi
 
-print_status "Connected to Kubernetes cluster"
+# Pull images from Docker Hub (optional, Kubernetes will pull automatically)
+if [[ "$1" == "--pull" ]]; then
+    print_info "Pulling images from Docker Hub..."
+    docker pull ram8545/nadsoft-backend:v1.0.0
+    docker pull ram8545/nadsoft-frontend:v1.0.0
 
-# Build and load Docker images (for local development)
-if [[ "$1" == "--build" ]]; then
-    print_status "Building Docker images..."
-
-    # Build images
-    docker build -t nadsoft-frontend:latest ./frontend
-    docker build -t nadsoft-backend:latest ./backend
-
-    # If using minikube, load images
+    # Load to minikube if using minikube
     if command -v minikube &> /dev/null && minikube status &> /dev/null; then
-        print_status "Loading images to minikube..."
-        minikube image load nadsoft-frontend:latest
-        minikube image load nadsoft-backend:latest
+        print_info "Loading images to minikube..."
+        minikube image load ram8545/nadsoft-backend:v1.0.0
+        minikube image load ram8545/nadsoft-frontend:v1.0.0
     fi
 
-    print_success "Docker images built and loaded"
+    print_success "Images pulled and loaded"
 fi
 
-# Apply Kubernetes manifests
-print_status "Applying Kubernetes manifests..."
+# Deploy Kubernetes resources
+print_info "Deploying to Kubernetes..."
 
-# Apply in order
 kubectl apply -f 01-namespace.yaml
 sleep 2
 
 kubectl apply -f 02-configmap.yaml
-kubectl apply -f 03-secret.yaml
+kubectl apply -f 03-secrets.yaml
 kubectl apply -f 04-persistent-volume.yaml
-sleep 5
+sleep 3
 
+# MySQL
+print_info "Deploying MySQL..."
 kubectl apply -f 05-mysql-deployment.yaml
-print_status "Waiting for MySQL to be ready..."
+print_info "Waiting for MySQL to be ready..."
 kubectl wait --for=condition=ready pod -l app=mysql -n nadsoft --timeout=300s
 
+# Backend
+print_info "Deploying Backend..."
 kubectl apply -f 06-backend-deployment.yaml
-print_status "Waiting for Backend to be ready..."
+print_info "Waiting for Backend to be ready..."
 kubectl wait --for=condition=ready pod -l app=backend -n nadsoft --timeout=300s
 
+# Frontend
+print_info "Deploying Frontend..."
 kubectl apply -f 07-frontend-deployment.yaml
-print_status "Waiting for Frontend to be ready..."
+print_info "Waiting for Frontend to be ready..."
 kubectl wait --for=condition=ready pod -l app=frontend -n nadsoft --timeout=300s
 
-# Apply optional components
-if [[ "$2" == "--with-ingress" ]]; then
-    kubectl apply -f 08-ingress.yaml
-    print_success "Ingress configured"
-fi
-
-if [[ "$3" == "--with-hpa" ]]; then
-    kubectl apply -f 09-hpa.yaml
-    print_success "HPA configured"
-fi
-
-print_success "All components deployed successfully!"
+print_success "All services deployed successfully! 🎉"
 
 # Show status
 echo ""
-print_status "Deployment Status:"
+print_info "=== DEPLOYMENT STATUS ==="
 kubectl get pods -n nadsoft -o wide
 
 echo ""
-print_status "Services:"
+print_info "=== SERVICES ==="
 kubectl get svc -n nadsoft
 
-# Port forwarding instructions
+# Access instructions
 echo ""
-print_status "To access the application locally, run:"
-echo "kubectl port-forward -n nadsoft service/frontend-service 3000:3000"
-echo "kubectl port-forward -n nadsoft service/backend-service 3001:3001"
-
+print_info "=== ACCESS YOUR APPLICATION ==="
+echo "Run these commands in separate terminals:"
 echo ""
-print_status "Or access via LoadBalancer (if configured):"
-kubectl get svc -n nadsoft | grep LoadBalancer
-
+echo "1. Frontend: kubectl port-forward -n nadsoft service/frontend-service 3000:3000"
+echo "   Then open: http://localhost:3000"
 echo ""
-print_success "🎉 Nadsoft Student Management System is now running on Kubernetes!"
+echo "2. Backend:  kubectl port-forward -n nadsoft service/backend-service 3001:3001"
+echo "   Then test: http://localhost:3001/api/students"
+echo ""
 
-# Optional: Open port-forward automatically
-if [[ "$4" == "--port-forward" ]]; then
-    print_status "Starting port forwarding..."
-    kubectl port-forward -n nadsoft service/frontend-service 3000:3000 &
-    kubectl port-forward -n nadsoft service/backend-service 3001:3001 &
-    print_success "Port forwarding started. Access the app at http://localhost:3000"
+# Auto port-forward if requested
+if [[ "$2" == "--port-forward" ]] || [[ "$1" == "--port-forward" ]]; then
+    print_info "Starting port forwarding..."
+    kubectl port-forward -n nadsoft service/frontend-service 3000:3000 > /dev/null 2>&1 &
+    kubectl port-forward -n nadsoft service/backend-service 3001:3001 > /dev/null 2>&1 &
+    sleep 2
+    print_success "Port forwarding started!"
+    echo ""
+    echo "🌐 Frontend: http://localhost:3000"
+    echo "🔗 Backend:  http://localhost:3001/api/students"
+    echo ""
+    print_warning "Keep this terminal open or press Ctrl+C to stop port forwarding"
+
+    # Keep script running
+    trap 'print_info "Stopping port forwarding..."; pkill -f "kubectl port-forward"; exit 0' INT
+    while true; do sleep 30; done
 fi

@@ -1,0 +1,166 @@
+<svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="800" fill="#f8f9fa"/>
+  
+  <!-- Title -->
+  <text x="600" y="30" text-anchor="middle" font-size="24" font-weight="bold" fill="#2c3e50">
+    Student Management System - Kubernetes Architecture
+  </text>
+  
+  <!-- User/Browser -->
+  <g transform="translate(50, 100)">
+    <rect x="0" y="0" width="120" height="80" rx="10" fill="#3498db" stroke="#2980b9" stroke-width="2"/>
+    <text x="60" y="25" text-anchor="middle" font-size="14" font-weight="bold" fill="white">User</text>
+    <text x="60" y="45" text-anchor="middle" font-size="12" fill="white">Browser</text>
+    <text x="60" y="65" text-anchor="middle" font-size="11" fill="#ecf0f1">localhost:3000</text>
+  </g>
+  
+  <!-- Minikube Cluster Box -->
+  <rect x="250" y="80" width="900" height="650" rx="15" fill="none" stroke="#8e44ad" stroke-width="3" stroke-dasharray="10,5"/>
+  <text x="700" y="105" text-anchor="middle" font-size="18" font-weight="bold" fill="#8e44ad">
+    Minikube Kubernetes Cluster
+  </text>
+  
+  <!-- Namespace Box -->
+  <rect x="280" y="130" width="840" height="580" rx="10" fill="none" stroke="#27ae60" stroke-width="2" stroke-dasharray="8,4"/>
+  <text x="700" y="155" text-anchor="middle" font-size="16" font-weight="bold" fill="#27ae60">
+    Namespace: nadsoft
+  </text>
+  
+  <!-- Frontend Section -->
+  <g transform="translate(320, 200)">
+    <!-- Frontend Pod -->
+    <rect x="0" y="0" width="200" height="120" rx="8" fill="#e74c3c" stroke="#c0392b" stroke-width="2"/>
+    <text x="100" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Frontend Pod</text>
+    <text x="100" y="40" text-anchor="middle" font-size="12" fill="white">React Application</text>
+    <text x="100" y="60" text-anchor="middle" font-size="11" fill="#ecf0f1">Port: 3000</text>
+    <text x="100" y="80" text-anchor="middle" font-size="10" fill="#ecf0f1">Image: ram8545/nadsoft-frontend:v1.0.0</text>
+    
+    <!-- Frontend Service -->
+    <rect x="0" y="140" width="200" height="60" rx="5" fill="#f39c12" stroke="#e67e22" stroke-width="2"/>
+    <text x="100" y="160" text-anchor="middle" font-size="12" font-weight="bold" fill="white">Frontend Service</text>
+    <text x="100" y="180" text-anchor="middle" font-size="10" fill="white">NodePort: 30000</text>
+  </g>
+  
+  <!-- Backend Section -->
+  <g transform="translate(580, 200)">
+    <!-- Backend Pod -->
+    <rect x="0" y="0" width="200" height="120" rx="8" fill="#2ecc71" stroke="#27ae60" stroke-width="2"/>
+    <text x="100" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Backend Pod</text>
+    <text x="100" y="40" text-anchor="middle" font-size="12" fill="white">Node.js API</text>
+    <text x="100" y="60" text-anchor="middle" font-size="11" fill="#ecf0f1">Port: 3001</text>
+    <text x="100" y="80" text-anchor="middle" font-size="10" fill="#ecf0f1">Image: ram8545/nadsoft-backend:v1.0.0</text>
+    
+    <!-- Backend Service -->
+    <rect x="0" y="140" width="200" height="60" rx="5" fill="#f39c12" stroke="#e67e22" stroke-width="2"/>
+    <text x="100" y="160" text-anchor="middle" font-size="12" font-weight="bold" fill="white">Backend Service</text>
+    <text x="100" y="180" text-anchor="middle" font-size="10" fill="white">NodePort: 30001</text>
+  </g>
+  
+  <!-- Database Section -->
+  <g transform="translate(840, 200)">
+    <!-- MySQL Pod -->
+    <rect x="0" y="0" width="200" height="120" rx="8" fill="#3498db" stroke="#2980b9" stroke-width="2"/>
+    <text x="100" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="white">MySQL Pod</text>
+    <text x="100" y="40" text-anchor="middle" font-size="12" fill="white">Database</text>
+    <text x="100" y="60" text-anchor="middle" font-size="11" fill="#ecf0f1">Port: 3306</text>
+    <text x="100" y="80" text-anchor="middle" font-size="10" fill="#ecf0f1">Image: mysql:8.0</text>
+    
+    <!-- MySQL Service -->
+    <rect x="0" y="140" width="200" height="60" rx="5" fill="#f39c12" stroke="#e67e22" stroke-width="2"/>
+    <text x="100" y="160" text-anchor="middle" font-size="12" font-weight="bold" fill="white">MySQL Service</text>
+    <text x="100" y="180" text-anchor="middle" font-size="10" fill="white">ClusterIP: 3306</text>
+  </g>
+  
+  <!-- Persistent Volume -->
+  <g transform="translate(840, 380)">
+    <rect x="0" y="0" width="200" height="60" rx="5" fill="#9b59b6" stroke="#8e44ad" stroke-width="2"/>
+    <text x="100" y="25" text-anchor="middle" font-size="12" font-weight="bold" fill="white">Persistent Volume</text>
+    <text x="100" y="45" text-anchor="middle" font-size="10" fill="white">MySQL Data Storage</text>
+  </g>
+  
+  <!-- ConfigMap and Secrets -->
+  <g transform="translate(320, 460)">
+    <rect x="0" y="0" width="150" height="80" rx="5" fill="#95a5a6" stroke="#7f8c8d" stroke-width="2"/>
+    <text x="75" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="white">ConfigMap</text>
+    <text x="75" y="40" text-anchor="middle" font-size="10" fill="white">DB Configuration</text>
+    <text x="75" y="55" text-anchor="middle" font-size="9" fill="white">DB_HOST, DB_PORT</text>
+    <text x="75" y="70" text-anchor="middle" font-size="9" fill="white">DB_NAME, etc.</text>
+  </g>
+  
+  <g transform="translate(500, 460)">
+    <rect x="0" y="0" width="150" height="80" rx="5" fill="#e67e22" stroke="#d35400" stroke-width="2"/>
+    <text x="75" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="white">Secrets</text>
+    <text x="75" y="40" text-anchor="middle" font-size="10" fill="white">DB Passwords</text>
+    <text x="75" y="55" text-anchor="middle" font-size="9" fill="white">MYSQL_PASSWORD</text>
+    <text x="75" y="70" text-anchor="middle" font-size="9" fill="white">DB_PASSWORD</text>
+  </g>
+  
+  <!-- Network Traffic Flows -->
+  <!-- User to Frontend -->
+  <path d="M 170 140 L 320 260" stroke="#3498db" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="245" y="190" font-size="11" fill="#3498db">HTTP :3000</text>
+  
+  <!-- Frontend to Backend -->
+  <path d="M 520 260 L 580 260" stroke="#e74c3c" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="540" y="250" font-size="11" fill="#e74c3c">API Calls</text>
+  
+  <!-- Backend to Database -->
+  <path d="M 780 260 L 840 260" stroke="#2ecc71" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="800" y="250" font-size="11" fill="#2ecc71">SQL :3306</text>
+  
+  <!-- Database to PV -->
+  <path d="M 940 320 L 940 380" stroke="#3498db" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="950" y="350" font-size="10" fill="#3498db">Data</text>
+  
+  <!-- ConfigMap to Backend -->
+  <path d="M 470 480 L 580 320" stroke="#95a5a6" stroke-width="2" fill="none" marker-end="url(#arrowhead)" stroke-dasharray="5,5"/>
+  
+  <!-- Secrets to Backend -->
+  <path d="M 575 460 L 650 320" stroke="#e67e22" stroke-width="2" fill="none" marker-end="url(#arrowhead)" stroke-dasharray="5,5"/>
+  
+  <!-- Secrets to Database -->
+  <path d="M 650 480 L 840 320" stroke="#e67e22" stroke-width="2" fill="none" marker-end="url(#arrowhead)" stroke-dasharray="5,5"/>
+  
+  <!-- Port Forward Info -->
+  <g transform="translate(50, 250)">
+    <rect x="0" y="0" width="180" height="100" rx="5" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1"/>
+    <text x="90" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#2c3e50">Port Forwarding</text>
+    <text x="90" y="40" text-anchor="middle" font-size="10" fill="#2c3e50">kubectl port-forward</text>
+    <text x="90" y="55" text-anchor="middle" font-size="9" fill="#2c3e50">Frontend: 8080:80</text>
+    <text x="90" y="70" text-anchor="middle" font-size="9" fill="#2c3e50">Backend: 8081:3001</text>
+    <text x="90" y="85" text-anchor="middle" font-size="9" fill="#2c3e50">--address=0.0.0.0</text>
+  </g>
+  
+  <!-- Data Flow Legend -->
+  <g transform="translate(50, 400)">
+    <text x="0" y="15" font-size="14" font-weight="bold" fill="#2c3e50">Data Flow:</text>
+    <text x="0" y="35" font-size="11" fill="#2c3e50">1. User accesses React app</text>
+    <text x="0" y="50" font-size="11" fill="#2c3e50">2. Frontend calls Backend API</text>
+    <text x="0" y="65" font-size="11" fill="#2c3e50">3. Backend queries MySQL</text>
+    <text x="0" y="80" font-size="11" fill="#2c3e50">4. Data stored in Persistent Volume</text>
+  </g>
+  
+  <!-- Database Tables Info -->
+  <g transform="translate(320, 580)">
+    <rect x="0" y="0" width="720" height="100" rx="5" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1"/>
+    <text x="360" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#2c3e50">Database Schema</text>
+    <text x="120" y="40" text-anchor="middle" font-size="10" fill="#2c3e50">students</text>
+    <text x="120" y="55" text-anchor="middle" font-size="9" fill="#2c3e50">id, first_name, last_name</text>
+    <text x="120" y="70" text-anchor="middle" font-size="9" fill="#2c3e50">email, dob, gender</text>
+    
+    <text x="360" y="40" text-anchor="middle" font-size="10" fill="#2c3e50">subjects</text>
+    <text x="360" y="55" text-anchor="middle" font-size="9" fill="#2c3e50">subject_id, subject_name</text>
+    
+    <text x="600" y="40" text-anchor="middle" font-size="10" fill="#2c3e50">marks</text>
+    <text x="600" y="55" text-anchor="middle" font-size="9" fill="#2c3e50">id, student_id, subject_id</text>
+    <text x="600" y="70" text-anchor="middle" font-size="9" fill="#2c3e50">marks_obtained</text>
+  </g>
+  
+  <!-- Arrow marker definition -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#34495e"/>
+    </marker>
+  </defs>
+</svg>

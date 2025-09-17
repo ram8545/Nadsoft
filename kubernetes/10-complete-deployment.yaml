@@ -1,0 +1,409 @@
+# =============================
+# Namespace
+# =============================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nadsoft
+  labels:
+    name: nadsoft
+
+---
+# =============================
+# ConfigMap
+# =============================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nadsoft-config
+  namespace: nadsoft
+data:
+  DB_HOST: "mysql-service"
+  DB_PORT: "3306"
+  DB_NAME: "student_db"
+  DB_USER: "nadsoft_user"
+  NODE_ENV: "production"
+  MYSQL_DATABASE: "student_db"
+  MYSQL_USER: "nadsoft_user"
+
+---
+# =============================
+# Secrets
+# =============================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nadsoft-secrets
+  namespace: nadsoft
+type: Opaque
+stringData:
+  DB_PASSWORD: "nadsoft_password"
+  MYSQL_PASSWORD: "nadsoft_password"
+  MYSQL_ROOT_PASSWORD: "rootpassword"
+
+---
+# =============================
+# Persistent Volume Claim
+# =============================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: nadsoft
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# =============================
+# MySQL Deployment
+# =============================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  namespace: nadsoft
+  labels:
+    app: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: nadsoft-secrets
+              key: MYSQL_ROOT_PASSWORD
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: nadsoft-config
+              key: MYSQL_DATABASE
+        - name: MYSQL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: nadsoft-config
+              key: MYSQL_USER
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: nadsoft-secrets
+              key: MYSQL_PASSWORD
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+        - name: mysql-init-script
+          mountPath: /docker-entrypoint-initdb.d
+        livenessProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - localhost
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - localhost
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+      - name: mysql-init-script
+        configMap:
+          name: mysql-init-script
+
+---
+# =============================
+# MySQL Service
+# =============================
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+  namespace: nadsoft
+  labels:
+    app: mysql
+spec:
+  ports:
+  - port: 3306
+    targetPort: 3306
+    protocol: TCP
+  selector:
+    app: mysql
+  type: ClusterIP
+
+---
+# =============================
+# MySQL Init Script ConfigMap
+# =============================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-init-script
+  namespace: nadsoft
+data:
+  init.sql: |
+    CREATE DATABASE IF NOT EXISTS student_db;
+    USE student_db;
+
+    CREATE TABLE IF NOT EXISTS students (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      first_name VARCHAR(255) NOT NULL,
+      last_name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      dob DATE,
+      gender ENUM('Male', 'Female', 'Other'),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS subjects (
+      subject_id INT AUTO_INCREMENT PRIMARY KEY,
+      subject_name VARCHAR(255) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS marks (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      student_id INT,
+      subject_id INT,
+      marks_obtained INT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+      FOREIGN KEY (subject_id) REFERENCES subjects(subject_id) ON DELETE CASCADE
+    );
+
+    INSERT IGNORE INTO subjects (subject_name) VALUES
+    ('Mathematics'), ('Physics'), ('Chemistry'), ('Biology'), ('English');
+
+---
+# =============================
+# Backend Deployment
+# =============================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: nadsoft
+  labels:
+    app: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: ram8545/nadsoft-backend:v1.0.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3001
+        env:
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: nadsoft-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: nadsoft-config
+              key: DB_PORT
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: nadsoft-config
+              key: DB_NAME
+        - name: DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: nadsoft-config
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: nadsoft-secrets
+              key: DB_PASSWORD
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: nadsoft-config
+              key: NODE_ENV
+        livenessProbe:
+          httpGet:
+            path: /api/students
+            port: 3001
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /api/students
+            port: 3001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+---
+# =============================
+# Frontend Deployment
+# =============================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  namespace: nadsoft
+  labels:
+    app: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: ram8545/nadsoft-frontend:v1.0.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+
+---
+# =============================
+# Frontend Service
+# =============================
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: nadsoft
+spec:
+  selector:
+    app: frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+
+---
+# =============================
+# Backend Service
+# =============================
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: nadsoft
+spec:
+  selector:
+    app: backend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3001
+
+---
+# =============================
+# Ingress with SSL
+# =============================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nadsoft-ingress
+  namespace: nadsoft
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Content-Type, Authorization"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - kubernetes.webwaps.in
+    secretName: nadsoft-tls
+  rules:
+  - host: kubernetes.webwaps.in
+    http:
+      paths:
+      # Backend API
+      - path: /api(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-service
+            port:
+              number: 80
+      # Frontend
+      - path: /(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 80
